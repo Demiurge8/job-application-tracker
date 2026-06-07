@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Job, CreateJobInput, JobStatus } from './types';
 import { getJobs, createJob, updateJob, deleteJob } from './api/jobs';
 import JobForm from './components/JobForm';
@@ -35,28 +35,81 @@ type Filter = JobStatus | 'all';
 
 export default function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editJob, setEditJob] = useState<Job | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  const fetchJobs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getJobs();
+      setJobs(data);
+    } catch {
+      setError('Kunne ikke forbinde til serveren. Er backend kørende?');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    getJobs().then(setJobs);
+    fetchJobs();
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowForm(false);
+        setEditJob(null);
+        setDeleteConfirm(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
   const handleCreate = async (input: CreateJobInput) => {
-    const newJob = await createJob(input);
-    setJobs([newJob, ...jobs]);
-    setShowForm(false);
+    try {
+      const newJob = await createJob(input);
+      setJobs([newJob, ...jobs]);
+      setShowForm(false);
+    } catch {
+      setError('Kunne ikke oprette ansøgning.');
+    }
+  };
+
+  const handleEdit = async (input: CreateJobInput) => {
+    if (!editJob) return;
+    try {
+      const updated = await updateJob(editJob.id, input);
+      setJobs(jobs.map((j) => (j.id === editJob.id ? updated : j)));
+      setEditJob(null);
+    } catch {
+      setError('Kunne ikke opdatere ansøgning.');
+    }
   };
 
   const handleDelete = async (id: number) => {
-    await deleteJob(id);
-    setJobs(jobs.filter((j) => j.id !== id));
+    try {
+      await deleteJob(id);
+      setJobs(jobs.filter((j) => j.id !== id));
+      setDeleteConfirm(null);
+    } catch {
+      setError('Kunne ikke slette ansøgning.');
+    }
   };
 
   const handleStatusChange = async (job: Job) => {
-    const next = statusOrder[(statusOrder.indexOf(job.status) + 1) % statusOrder.length];
-    const updated = await updateJob(job.id, { ...job, status: next });
-    setJobs(jobs.map((j) => (j.id === job.id ? updated : j)));
+    try {
+      const next = statusOrder[(statusOrder.indexOf(job.status) + 1) % statusOrder.length];
+      const updated = await updateJob(job.id, { ...job, status: next });
+      setJobs(jobs.map((j) => (j.id === job.id ? updated : j)));
+    } catch {
+      setError('Kunne ikke opdatere status.');
+    }
   };
 
   const counts = {
@@ -82,17 +135,25 @@ export default function App() {
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            <span>+</span> Tilføj ansøgning
+            + Tilføj ansøgning
           </button>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl px-4 py-3 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 ml-4">✕</button>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-8">
           {([
-            { key: 'sent',      label: 'Sendt',     color: 'text-blue-400' },
-            { key: 'interview', label: 'Interview',  color: 'text-amber-400' },
-            { key: 'offer',     label: 'Tilbud',    color: 'text-green-400' },
-            { key: 'rejected',  label: 'Afslag',    color: 'text-red-400' },
+            { key: 'sent',      label: 'Sendt',    color: 'text-blue-400' },
+            { key: 'interview', label: 'Interview', color: 'text-amber-400' },
+            { key: 'offer',     label: 'Tilbud',   color: 'text-green-400' },
+            { key: 'rejected',  label: 'Afslag',   color: 'text-red-400' },
           ] as const).map(({ key, label, color }) => (
             <div key={key} className="bg-[#1a1d27] rounded-xl p-4 border border-white/5">
               <div className={`text-2xl font-semibold ${color}`}>{counts[key]}</div>
@@ -118,20 +179,34 @@ export default function App() {
           ))}
         </div>
 
-        {/* Job Cards */}
-        {filtered.length === 0 ? (
+        {/* Loading */}
+        {loading && (
+          <div className="flex flex-col gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-[#1a1d27] border border-white/5 rounded-xl px-5 py-4 h-16 animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && filtered.length === 0 && (
           <div className="text-center py-20 text-gray-600">
-            <p className="text-lg">Ingen ansøgninger endnu</p>
+            <div className="text-5xl mb-4">📋</div>
+            <p className="text-lg text-gray-500">Ingen ansøgninger endnu</p>
             <p className="text-sm mt-1">Klik på "Tilføj ansøgning" for at starte</p>
           </div>
-        ) : (
+        )}
+
+        {/* Job Cards */}
+        {!loading && filtered.length > 0 && (
           <div className="flex flex-col gap-2">
             {filtered.map((job) => {
               const cfg = statusConfig[job.status];
+              const isConfirming = deleteConfirm === job.id;
               return (
                 <div
                   key={job.id}
-                  className="bg-[#1a1d27] border border-white/5 rounded-xl px-5 py-4 flex items-center justify-between hover:border-white/10 transition-colors"
+                  className="bg-[#1a1d27] border border-white/5 rounded-xl px-5 py-4 flex items-center justify-between hover:border-indigo-500/30 hover:bg-[#1e2133] transition-all duration-200"
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0 ${getIconColor(job.company)}`}>
@@ -146,12 +221,16 @@ export default function App() {
                         ) : job.company}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">{job.position}</div>
+                      {job.notes && (
+                        <div className="text-xs text-gray-600 mt-0.5 max-w-xs truncate">{job.notes}</div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleStatusChange(job)}
+                      title="Klik for at skifte status"
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-opacity hover:opacity-80 ${cfg.bg} ${cfg.text} ${cfg.border}`}
                     >
                       {cfg.label}
@@ -159,12 +238,41 @@ export default function App() {
                     <span className="text-xs text-gray-600">
                       {new Date(job.applied_date).toLocaleDateString('da-DK')}
                     </span>
+
+                    {/* Edit */}
                     <button
-                      onClick={() => handleDelete(job.id)}
-                      className="text-gray-700 hover:text-red-400 transition-colors text-xs"
+                      onClick={() => setEditJob(job)}
+                      className="text-gray-600 hover:text-indigo-400 transition-colors text-xs"
+                      title="Rediger"
                     >
-                      ✕
+                      ✎
                     </button>
+
+                    {/* Delete with confirm */}
+                    {isConfirming ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleDelete(job.id)}
+                          className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded hover:bg-red-500/30 transition-colors"
+                        >
+                          Slet
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                        >
+                          Nej
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(job.id)}
+                        className="text-gray-700 hover:text-red-400 transition-colors text-xs"
+                        title="Slet"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -173,8 +281,18 @@ export default function App() {
         )}
       </div>
 
+      {/* Create Form */}
       {showForm && (
         <JobForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
+      )}
+
+      {/* Edit Form */}
+      {editJob && (
+        <JobForm
+          onSubmit={handleEdit}
+          onCancel={() => setEditJob(null)}
+          initialData={editJob}
+        />
       )}
     </div>
   );

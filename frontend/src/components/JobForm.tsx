@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import type { CreateJobInput, JobStatus } from '../types';
+import type { CreateJobInput } from '../types';
 
 interface Props {
   onSubmit: (job: CreateJobInput) => void;
   onCancel: () => void;
+  initialData?: CreateJobInput;
 }
 
-export default function JobForm({ onSubmit, onCancel }: Props) {
-  const [form, setForm] = useState<CreateJobInput>({
-    company: '',
-    position: '',
-    status: 'sent',
-    applied_date: new Date().toISOString().split('T')[0],
-    notes: '',
-    job_url: '',
-  });
+export default function JobForm({ onSubmit, onCancel, initialData }: Props) {
+  const [form, setForm] = useState<CreateJobInput>(
+    initialData ?? {
+      company: '',
+      position: '',
+      status: 'sent',
+      applied_date: new Date().toISOString().split('T')[0],
+      notes: '',
+      job_url: '',
+    }
+  );
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -29,10 +32,14 @@ export default function JobForm({ onSubmit, onCancel }: Props) {
 
   const inputClass = "w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors";
 
+  const isEditing = !!initialData;
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
       <div className="bg-[#1a1d27] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-        <h2 className="text-lg font-semibold text-gray-100 mb-5">Ny ansøgning</h2>
+        <h2 className="text-lg font-semibold text-gray-100 mb-5">
+          {isEditing ? 'Rediger ansøgning' : 'Ny ansøgning'}
+        </h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input
             name="company"
@@ -72,14 +79,14 @@ export default function JobForm({ onSubmit, onCancel }: Props) {
           <input
             name="job_url"
             placeholder="Link til jobopslag (valgfrit)"
-            value={form.job_url}
+            value={form.job_url ?? ''}
             onChange={handleChange}
             className={inputClass}
           />
           <textarea
             name="notes"
             placeholder="Noter (valgfrit)"
-            value={form.notes}
+            value={form.notes ?? ''}
             onChange={handleChange}
             rows={3}
             className={`${inputClass} resize-none`}
@@ -89,7 +96,7 @@ export default function JobForm({ onSubmit, onCancel }: Props) {
               type="submit"
               className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2 text-sm font-medium transition-colors"
             >
-              Tilføj
+              {isEditing ? 'Gem ændringer' : 'Tilføj'}
             </button>
             <button
               type="button"
