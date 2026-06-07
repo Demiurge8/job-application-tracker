@@ -27,37 +27,39 @@ export default function JobForm({ onSubmit, onCancel }: Props) {
     onSubmit(form);
   };
 
+  const inputClass = "w-full bg-[#0f1117] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors";
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-        <h2 className="text-xl font-bold mb-4">Нова заявка</h2>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+      <div className="bg-[#1a1d27] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+        <h2 className="text-lg font-semibold text-gray-100 mb-5">Ny ansøgning</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input
             name="company"
-            placeholder="Компанія"
+            placeholder="Virksomhed"
             value={form.company}
             onChange={handleChange}
             required
-            className="border rounded-lg px-3 py-2 text-sm"
+            className={inputClass}
           />
           <input
             name="position"
-            placeholder="Посада"
+            placeholder="Stilling"
             value={form.position}
             onChange={handleChange}
             required
-            className="border rounded-lg px-3 py-2 text-sm"
+            className={inputClass}
           />
           <select
             name="status"
             value={form.status}
             onChange={handleChange}
-            className="border rounded-lg px-3 py-2 text-sm"
+            className={inputClass}
           >
-            <option value="sent">Відправлено</option>
-            <option value="interview">Інтерв'ю</option>
-            <option value="rejected">Відмова</option>
-            <option value="offer">Оффер</option>
+            <option value="sent">Sendt</option>
+            <option value="interview">Interview</option>
+            <option value="rejected">Afslag</option>
+            <option value="offer">Tilbud</option>
           </select>
           <input
             name="applied_date"
@@ -65,36 +67,36 @@ export default function JobForm({ onSubmit, onCancel }: Props) {
             value={form.applied_date}
             onChange={handleChange}
             required
-            className="border rounded-lg px-3 py-2 text-sm"
+            className={inputClass}
           />
           <input
             name="job_url"
-            placeholder="Посилання на вакансію"
+            placeholder="Link til jobopslag (valgfrit)"
             value={form.job_url}
             onChange={handleChange}
-            className="border rounded-lg px-3 py-2 text-sm"
+            className={inputClass}
           />
           <textarea
             name="notes"
-            placeholder="Нотатки"
+            placeholder="Noter (valgfrit)"
             value={form.notes}
             onChange={handleChange}
             rows={3}
-            className="border rounded-lg px-3 py-2 text-sm resize-none"
+            className={`${inputClass} resize-none`}
           />
           <div className="flex gap-2 mt-2">
             <button
               type="submit"
-              className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2 text-sm font-medium transition-colors"
             >
-              Додати
+              Tilføj
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 border rounded-lg py-2 text-sm font-medium hover:bg-gray-50"
+              className="flex-1 bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg py-2 text-sm font-medium transition-colors"
             >
-              Скасувати
+              Annuller
             </button>
           </div>
         </form>
