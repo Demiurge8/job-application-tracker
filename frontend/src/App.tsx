@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Job, CreateJobInput, JobStatus } from './types';
 import { getJobs, createJob, updateJob, deleteJob } from './api/jobs';
 import JobForm from './components/JobForm';
+import Toast from './components/Toast';
 
 const statusOrder: JobStatus[] = ['sent', 'interview', 'rejected', 'offer'];
 
@@ -26,6 +27,21 @@ const iconColors: Record<string, string> = {
   H: 'bg-indigo-500/20 text-indigo-400',
   I: 'bg-orange-500/20 text-orange-400',
   J: 'bg-cyan-500/20 text-cyan-400',
+  K: 'bg-rose-500/20 text-rose-400',
+  L: 'bg-violet-500/20 text-violet-400',
+  M: 'bg-sky-500/20 text-sky-400',
+  N: 'bg-emerald-500/20 text-emerald-400',
+  O: 'bg-yellow-500/20 text-yellow-400',
+  P: 'bg-lime-500/20 text-lime-400',
+  R: 'bg-fuchsia-500/20 text-fuchsia-400',
+  S: 'bg-blue-400/20 text-blue-300',
+  T: 'bg-purple-400/20 text-purple-300',
+  U: 'bg-teal-400/20 text-teal-300',
+  V: 'bg-orange-400/20 text-orange-300',
+  W: 'bg-pink-400/20 text-pink-300',
+  X: 'bg-indigo-400/20 text-indigo-300',
+  Y: 'bg-cyan-400/20 text-cyan-300',
+  Z: 'bg-green-400/20 text-green-300',
 };
 
 const getIconColor = (company: string) =>
@@ -33,31 +49,37 @@ const getIconColor = (company: string) =>
 
 type Filter = JobStatus | 'all';
 
+interface ToastState {
+  message: string;
+  type: 'success' | 'error';
+}
+
 export default function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editJob, setEditJob] = useState<Job | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  };
+
   const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const data = await getJobs();
       setJobs(data);
     } catch {
-      setError('Kunne ikke forbinde til serveren. Er backend kørende?');
+      showToast('Kunne ikke forbinde til serveren.', 'error');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -76,8 +98,9 @@ export default function App() {
       const newJob = await createJob(input);
       setJobs([newJob, ...jobs]);
       setShowForm(false);
+      showToast('Ansøgning tilføjet!', 'success');
     } catch {
-      setError('Kunne ikke oprette ansøgning.');
+      showToast('Kunne ikke oprette ansøgning.', 'error');
     }
   };
 
@@ -87,8 +110,9 @@ export default function App() {
       const updated = await updateJob(editJob.id, input);
       setJobs(jobs.map((j) => (j.id === editJob.id ? updated : j)));
       setEditJob(null);
+      showToast('Ansøgning opdateret!', 'success');
     } catch {
-      setError('Kunne ikke opdatere ansøgning.');
+      showToast('Kunne ikke opdatere ansøgning.', 'error');
     }
   };
 
@@ -97,8 +121,9 @@ export default function App() {
       await deleteJob(id);
       setJobs(jobs.filter((j) => j.id !== id));
       setDeleteConfirm(null);
+      showToast('Ansøgning slettet.', 'success');
     } catch {
-      setError('Kunne ikke slette ansøgning.');
+      showToast('Kunne ikke slette ansøgning.', 'error');
     }
   };
 
@@ -107,8 +132,9 @@ export default function App() {
       const next = statusOrder[(statusOrder.indexOf(job.status) + 1) % statusOrder.length];
       const updated = await updateJob(job.id, { ...job, status: next });
       setJobs(jobs.map((j) => (j.id === job.id ? updated : j)));
+      showToast(`Status ændret til ${statusConfig[next].label}`, 'success');
     } catch {
-      setError('Kunne ikke opdatere status.');
+      showToast('Kunne ikke opdatere status.', 'error');
     }
   };
 
@@ -121,60 +147,58 @@ export default function App() {
 
   const filtered = filter === 'all' ? jobs : jobs.filter((j) => j.status === filter);
 
-  return (
-    <div className="min-h-screen bg-[#0f1117] text-white">
-      <div className="max-w-3xl mx-auto px-4 py-10">
+  const cardStyle = { background: '#1a1d27', borderColor: 'rgba(255,255,255,0.05)', transition: 'background 0.15s ease, border-color 0.15s ease' };
+  const cardHoverIn = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.currentTarget.style.background = '#252840';
+    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
+  };
+  const cardHoverOut = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.currentTarget.style.background = '#1a1d27';
+    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+  };
 
-        {/* Header */}
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Job Tracker</h1>
-            <p className="text-sm text-gray-500 mt-1">{jobs.length} ansøgninger i alt</p>
+  return (
+    <div className="min-h-screen text-white w-full" style={{ background: '#0f1117' }}>
+
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-white/5" style={{ background: 'rgba(15,17,23,0.9)', backdropFilter: 'blur(12px)' }}>
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base font-semibold tracking-tight">Job Tracker</h1>
+            <span className="text-xs text-gray-600 border border-white/10 px-2 py-0.5 rounded-full">{jobs.length}</span>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
           >
-            + Tilføj ansøgning
+            + Tilføj
           </button>
         </div>
+      </header>
 
-        {/* Error */}
-        {error && (
-          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl px-4 py-3 text-sm flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 ml-4">✕</button>
-          </div>
-        )}
+      <div className="max-w-3xl mx-auto px-4 py-8">
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-8">
+        {/* Stats — клікабельні як фільтри */}
+        <div className="grid grid-cols-5 gap-3 mb-6">
           {([
-            { key: 'sent',      label: 'Sendt',    color: 'text-blue-400' },
-            { key: 'interview', label: 'Interview', color: 'text-amber-400' },
-            { key: 'offer',     label: 'Tilbud',   color: 'text-green-400' },
-            { key: 'rejected',  label: 'Afslag',   color: 'text-red-400' },
-          ] as const).map(({ key, label, color }) => (
-            <div key={key} className="bg-[#1a1d27] rounded-xl p-4 border border-white/5">
-              <div className={`text-2xl font-semibold ${color}`}>{counts[key]}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide mt-1">{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2 mb-5">
-          {(['all', 'sent', 'interview', 'offer', 'rejected'] as const).map((s) => (
+            { key: 'all',       label: 'Alle',      count: jobs.length,      color: 'text-gray-300',  activeColor: 'border-gray-400/40' },
+            { key: 'sent',      label: 'Sendt',     count: counts.sent,      color: 'text-blue-400',  activeColor: 'border-blue-400/40' },
+            { key: 'interview', label: 'Interview',  count: counts.interview, color: 'text-amber-400', activeColor: 'border-amber-400/40' },
+            { key: 'offer',     label: 'Tilbud',    count: counts.offer,     color: 'text-green-400', activeColor: 'border-green-400/40' },
+            { key: 'rejected',  label: 'Afslag',    count: counts.rejected,  color: 'text-red-400',   activeColor: 'border-red-400/40' },
+          ] as const).map(({ key, label, count, color, activeColor }) => (
             <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                filter === s
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-transparent text-gray-400 border-white/10 hover:border-white/20'
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`rounded-xl p-4 border text-left transition-all ${
+                filter === key
+                  ? `border-2 ${activeColor}`
+                  : 'border-white/5 hover:border-white/10'
               }`}
+              style={{ background: filter === key ? '#1e2133' : '#1a1d27' }}
             >
-              {s === 'all' ? 'Alle' : statusConfig[s].label}
+              <div className={`text-2xl font-semibold ${color}`}>{count}</div>
+              <div className="text-xs text-gray-500 mt-1">{label}</div>
             </button>
           ))}
         </div>
@@ -183,17 +207,17 @@ export default function App() {
         {loading && (
           <div className="flex flex-col gap-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-[#1a1d27] border border-white/5 rounded-xl px-5 py-4 h-16 animate-pulse" />
+              <div key={i} className="border border-white/5 rounded-xl px-5 py-4 h-16 animate-pulse" style={{ background: '#1a1d27' }} />
             ))}
           </div>
         )}
 
         {/* Empty state */}
         {!loading && filtered.length === 0 && (
-          <div className="text-center py-20 text-gray-600">
+          <div className="text-center py-20">
             <div className="text-5xl mb-4">📋</div>
             <p className="text-lg text-gray-500">Ingen ansøgninger endnu</p>
-            <p className="text-sm mt-1">Klik på "Tilføj ansøgning" for at starte</p>
+            <p className="text-sm mt-1 text-gray-600">Klik på "+ Tilføj" for at starte</p>
           </div>
         )}
 
@@ -206,10 +230,13 @@ export default function App() {
               return (
                 <div
                   key={job.id}
-                  className="bg-[#1a1d27] border border-white/5 rounded-xl px-5 py-4 flex items-center justify-between hover:border-indigo-500/30 hover:bg-[#1e2133] transition-all duration-200"
+                  style={cardStyle}
+                  onMouseEnter={cardHoverIn}
+                  onMouseLeave={cardHoverOut}
+                  className="border rounded-xl px-5 py-4 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0 ${getIconColor(job.company)}`}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0 ${getIconColor(job.company)}`}>
                       {initials(job.company)}
                     </div>
                     <div>
@@ -222,7 +249,7 @@ export default function App() {
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">{job.position}</div>
                       {job.notes && (
-                        <div className="text-xs text-gray-600 mt-0.5 max-w-xs truncate">{job.notes}</div>
+                        <div className="text-xs text-gray-600 mt-0.5 max-w-xs truncate" title={job.notes}>{job.notes}</div>
                       )}
                     </div>
                   </div>
@@ -238,28 +265,24 @@ export default function App() {
                     <span className="text-xs text-gray-600">
                       {new Date(job.applied_date).toLocaleDateString('da-DK')}
                     </span>
-
-                    {/* Edit */}
                     <button
                       onClick={() => setEditJob(job)}
-                      className="text-gray-600 hover:text-indigo-400 transition-colors text-xs"
+                      className="text-gray-600 hover:text-indigo-400 transition-colors text-sm"
                       title="Rediger"
                     >
                       ✎
                     </button>
-
-                    {/* Delete with confirm */}
                     {isConfirming ? (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleDelete(job.id)}
-                          className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded hover:bg-red-500/30 transition-colors"
+                          className="text-xs bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 px-2 py-0.5 rounded transition-colors font-medium"
                         >
                           Slet
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(null)}
-                          className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                          className="text-xs text-gray-600 hover:text-gray-400 px-1 transition-colors"
                         >
                           Nej
                         </button>
@@ -267,7 +290,7 @@ export default function App() {
                     ) : (
                       <button
                         onClick={() => setDeleteConfirm(job.id)}
-                        className="text-gray-700 hover:text-red-400 transition-colors text-xs"
+                        className="text-gray-700 hover:text-red-400 transition-colors text-sm"
                         title="Slet"
                       >
                         ✕
@@ -281,17 +304,14 @@ export default function App() {
         )}
       </div>
 
-      {/* Create Form */}
-      {showForm && (
-        <JobForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
-      )}
+      {showForm && <JobForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />}
+      {editJob && <JobForm onSubmit={handleEdit} onCancel={() => setEditJob(null)} initialData={editJob} />}
 
-      {/* Edit Form */}
-      {editJob && (
-        <JobForm
-          onSubmit={handleEdit}
-          onCancel={() => setEditJob(null)}
-          initialData={editJob}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>
