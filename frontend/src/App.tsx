@@ -3,6 +3,7 @@ import type { Job, CreateJobInput, JobStatus } from './types';
 import { getJobs, createJob, updateJob, deleteJob } from './api/jobs';
 import JobForm from './components/JobForm';
 import Toast from './components/Toast';
+import JobDetail from './components/JobDetail';
 
 const statusOrder: JobStatus[] = ['sent', 'interview', 'rejected', 'offer'];
 
@@ -17,30 +18,18 @@ const initials = (company: string) =>
   company.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
 const iconColors: Record<string, string> = {
-  A: 'bg-blue-500/20 text-blue-400',
-  B: 'bg-purple-500/20 text-purple-400',
-  C: 'bg-teal-500/20 text-teal-400',
-  D: 'bg-amber-500/20 text-amber-400',
-  E: 'bg-red-500/20 text-red-400',
-  F: 'bg-green-500/20 text-green-400',
-  G: 'bg-pink-500/20 text-pink-400',
-  H: 'bg-indigo-500/20 text-indigo-400',
-  I: 'bg-orange-500/20 text-orange-400',
-  J: 'bg-cyan-500/20 text-cyan-400',
-  K: 'bg-rose-500/20 text-rose-400',
-  L: 'bg-violet-500/20 text-violet-400',
-  M: 'bg-sky-500/20 text-sky-400',
-  N: 'bg-emerald-500/20 text-emerald-400',
-  O: 'bg-yellow-500/20 text-yellow-400',
-  P: 'bg-lime-500/20 text-lime-400',
-  R: 'bg-fuchsia-500/20 text-fuchsia-400',
-  S: 'bg-blue-400/20 text-blue-300',
-  T: 'bg-purple-400/20 text-purple-300',
-  U: 'bg-teal-400/20 text-teal-300',
-  V: 'bg-orange-400/20 text-orange-300',
-  W: 'bg-pink-400/20 text-pink-300',
-  X: 'bg-indigo-400/20 text-indigo-300',
-  Y: 'bg-cyan-400/20 text-cyan-300',
+  A: 'bg-blue-500/20 text-blue-400',   B: 'bg-purple-500/20 text-purple-400',
+  C: 'bg-teal-500/20 text-teal-400',   D: 'bg-amber-500/20 text-amber-400',
+  E: 'bg-red-500/20 text-red-400',     F: 'bg-green-500/20 text-green-400',
+  G: 'bg-pink-500/20 text-pink-400',   H: 'bg-indigo-500/20 text-indigo-400',
+  I: 'bg-orange-500/20 text-orange-400', J: 'bg-cyan-500/20 text-cyan-400',
+  K: 'bg-rose-500/20 text-rose-400',   L: 'bg-violet-500/20 text-violet-400',
+  M: 'bg-sky-500/20 text-sky-400',     N: 'bg-emerald-500/20 text-emerald-400',
+  O: 'bg-yellow-500/20 text-yellow-400', P: 'bg-lime-500/20 text-lime-400',
+  R: 'bg-fuchsia-500/20 text-fuchsia-400', S: 'bg-blue-400/20 text-blue-300',
+  T: 'bg-purple-400/20 text-purple-300', U: 'bg-teal-400/20 text-teal-300',
+  V: 'bg-orange-400/20 text-orange-300', W: 'bg-pink-400/20 text-pink-300',
+  X: 'bg-indigo-400/20 text-indigo-300', Y: 'bg-cyan-400/20 text-cyan-300',
   Z: 'bg-green-400/20 text-green-300',
 };
 
@@ -63,6 +52,7 @@ export default function App() {
   const [filter, setFilter] = useState<Filter>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -88,6 +78,7 @@ export default function App() {
         setShowForm(false);
         setEditJob(null);
         setDeleteConfirm(null);
+        setSelectedJob(null);
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -122,6 +113,7 @@ export default function App() {
       await deleteJob(id);
       setJobs(jobs.filter((j) => j.id !== id));
       setDeleteConfirm(null);
+      setSelectedJob(null);
       showToast('Ansøgning slettet.', 'success');
     } catch {
       showToast('Kunne ikke slette ansøgning.', 'error');
@@ -133,6 +125,7 @@ export default function App() {
       const next = statusOrder[(statusOrder.indexOf(job.status) + 1) % statusOrder.length];
       const updated = await updateJob(job.id, { ...job, status: next });
       setJobs(jobs.map((j) => (j.id === job.id ? updated : j)));
+      if (selectedJob?.id === job.id) setSelectedJob(updated);
       showToast(`Status ændret til ${statusConfig[next].label}`, 'success');
     } catch {
       showToast('Kunne ikke opdatere status.', 'error');
@@ -147,16 +140,22 @@ export default function App() {
   };
 
   const filtered = (filter === 'all' ? jobs : jobs.filter((j) => j.status === filter))
-  .filter((j) =>
-    j.company.toLowerCase().includes(search.toLowerCase()) ||
-    j.position.toLowerCase().includes(search.toLowerCase())
-  );
+    .filter((j) =>
+      j.company.toLowerCase().includes(search.toLowerCase()) ||
+      j.position.toLowerCase().includes(search.toLowerCase())
+    );
 
-  const cardStyle = { background: '#1a1d27', borderColor: 'rgba(255,255,255,0.05)', transition: 'background 0.15s ease, border-color 0.15s ease' };
+  const cardStyle = {
+    background: '#1a1d27',
+    borderColor: 'rgba(255,255,255,0.05)',
+    transition: 'background 0.15s ease, border-color 0.15s ease',
+  };
+
   const cardHoverIn = (e: React.MouseEvent<HTMLDivElement>) => {
     e.currentTarget.style.background = '#252840';
     e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)';
   };
+
   const cardHoverOut = (e: React.MouseEvent<HTMLDivElement>) => {
     e.currentTarget.style.background = '#1a1d27';
     e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
@@ -183,22 +182,20 @@ export default function App() {
 
       <div className="max-w-3xl mx-auto px-4 py-8">
 
-        {/* Stats — клікабельні як фільтри */}
+        {/* Stats */}
         <div className="grid grid-cols-5 gap-3 mb-6">
           {([
-            { key: 'all',       label: 'Alle',      count: jobs.length,      color: 'text-gray-300',  activeColor: 'border-gray-400/40' },
-            { key: 'sent',      label: 'Sendt',     count: counts.sent,      color: 'text-blue-400',  activeColor: 'border-blue-400/40' },
-            { key: 'interview', label: 'Interview',  count: counts.interview, color: 'text-amber-400', activeColor: 'border-amber-400/40' },
-            { key: 'offer',     label: 'Tilbud',    count: counts.offer,     color: 'text-green-400', activeColor: 'border-green-400/40' },
-            { key: 'rejected',  label: 'Afslag',    count: counts.rejected,  color: 'text-red-400',   activeColor: 'border-red-400/40' },
+            { key: 'all',       label: 'Alle',     count: jobs.length,      color: 'text-gray-300',  activeColor: 'border-gray-400/40' },
+            { key: 'sent',      label: 'Sendt',    count: counts.sent,      color: 'text-blue-400',  activeColor: 'border-blue-400/40' },
+            { key: 'interview', label: 'Interview', count: counts.interview, color: 'text-amber-400', activeColor: 'border-amber-400/40' },
+            { key: 'offer',     label: 'Tilbud',   count: counts.offer,     color: 'text-green-400', activeColor: 'border-green-400/40' },
+            { key: 'rejected',  label: 'Afslag',   count: counts.rejected,  color: 'text-red-400',   activeColor: 'border-red-400/40' },
           ] as const).map(({ key, label, count, color, activeColor }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
               className={`rounded-xl p-4 border text-left transition-all ${
-                filter === key
-                  ? `border-2 ${activeColor}`
-                  : 'border-white/5 hover:border-white/10'
+                filter === key ? `border-2 ${activeColor}` : 'border-white/5 hover:border-white/10'
               }`}
               style={{ background: filter === key ? '#1e2133' : '#1a1d27' }}
             >
@@ -207,7 +204,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        
+
         {/* Search */}
         <div className="relative mb-4">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 text-sm">🔍</span>
@@ -244,29 +241,26 @@ export default function App() {
             {filtered.map((job, index) => {
               const cfg = statusConfig[job.status];
               const isConfirming = deleteConfirm === job.id;
+              const isSelected = selectedJob?.id === job.id;
               return (
                 <div
                   key={job.id}
                   style={{
                     ...cardStyle,
                     animationDelay: `${index * 0.05}s`,
+                    ...(isSelected ? { background: '#1e2133', borderColor: 'rgba(99,102,241,0.4)' } : {}),
                   }}
                   onMouseEnter={cardHoverIn}
                   onMouseLeave={cardHoverOut}
-                  className="animate-fade-in-up border rounded-xl px-5 py-5 flex items-center justify-between"
+                  onClick={() => setSelectedJob(isSelected ? null : job)}
+                  className="animate-fade-in-up border rounded-xl px-5 py-5 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0 ${getIconColor(job.company)}`}>
                       {initials(job.company)}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-100">
-                        {job.job_url ? (
-                          <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400 transition-colors">
-                            {job.company}
-                          </a>
-                        ) : job.company}
-                      </div>
+                      <div className="text-sm font-medium text-gray-100">{job.company}</div>
                       <div className="text-xs text-gray-500 mt-0.5">{job.position}</div>
                       {job.notes && (
                         <div className="text-xs text-gray-600 mt-0.5 max-w-xs truncate" title={job.notes}>{job.notes}</div>
@@ -276,7 +270,7 @@ export default function App() {
 
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => handleStatusChange(job)}
+                      onClick={(e) => { e.stopPropagation(); handleStatusChange(job); }}
                       title="Klik for at skifte status"
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-opacity hover:opacity-80 ${cfg.bg} ${cfg.text} ${cfg.border}`}
                     >
@@ -286,14 +280,14 @@ export default function App() {
                       {new Date(job.applied_date).toLocaleDateString('da-DK')}
                     </span>
                     <button
-                      onClick={() => setEditJob(job)}
+                      onClick={(e) => { e.stopPropagation(); setEditJob(job); }}
                       className="text-gray-600 hover:text-indigo-400 transition-colors text-sm"
                       title="Rediger"
                     >
                       ✎
                     </button>
                     {isConfirming ? (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleDelete(job.id)}
                           className="text-xs bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 px-2 py-0.5 rounded transition-colors font-medium"
@@ -309,7 +303,7 @@ export default function App() {
                       </div>
                     ) : (
                       <button
-                        onClick={() => setDeleteConfirm(job.id)}
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(job.id); }}
                         className="text-gray-700 hover:text-red-400 transition-colors text-sm"
                         title="Slet"
                       >
@@ -323,6 +317,15 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {selectedJob && (
+        <JobDetail
+          job={selectedJob}
+          onClose={() => setSelectedJob(null)}
+          onEdit={(job) => { setEditJob(job); setSelectedJob(null); }}
+          onDelete={(id) => { handleDelete(id); setSelectedJob(null); }}
+        />
+      )}
 
       {showForm && <JobForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />}
       {editJob && <JobForm onSubmit={handleEdit} onCancel={() => setEditJob(null)} initialData={editJob} />}

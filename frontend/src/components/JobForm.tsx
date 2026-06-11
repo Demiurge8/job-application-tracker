@@ -9,7 +9,12 @@ interface Props {
 
 export default function JobForm({ onSubmit, onCancel, initialData }: Props) {
   const [form, setForm] = useState<CreateJobInput>(
-    initialData ?? {
+    initialData ? {
+      ...initialData,
+      applied_date: initialData.applied_date
+        ? initialData.applied_date.split('T')[0]
+        : new Date().toISOString().split('T')[0],
+    } : {
       company: '',
       position: '',
       status: 'sent',
