@@ -62,6 +62,7 @@ export default function App() {
   const [editJob, setEditJob] = useState<Job | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -145,7 +146,11 @@ export default function App() {
     rejected:  jobs.filter((j) => j.status === 'rejected').length,
   };
 
-  const filtered = filter === 'all' ? jobs : jobs.filter((j) => j.status === filter);
+  const filtered = (filter === 'all' ? jobs : jobs.filter((j) => j.status === filter))
+  .filter((j) =>
+    j.company.toLowerCase().includes(search.toLowerCase()) ||
+    j.position.toLowerCase().includes(search.toLowerCase())
+  );
 
   const cardStyle = { background: '#1a1d27', borderColor: 'rgba(255,255,255,0.05)', transition: 'background 0.15s ease, border-color 0.15s ease' };
   const cardHoverIn = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -202,6 +207,18 @@ export default function App() {
             </button>
           ))}
         </div>
+        
+        {/* Search */}
+        <div className="relative mb-4">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 text-sm">🔍</span>
+          <input
+            type="text"
+            placeholder="Søg efter virksomhed eller stilling..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#1a1d27] border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
+          />
+        </div>
 
         {/* Loading */}
         {loading && (
@@ -224,19 +241,22 @@ export default function App() {
         {/* Job Cards */}
         {!loading && filtered.length > 0 && (
           <div className="flex flex-col gap-2">
-            {filtered.map((job) => {
+            {filtered.map((job, index) => {
               const cfg = statusConfig[job.status];
               const isConfirming = deleteConfirm === job.id;
               return (
                 <div
                   key={job.id}
-                  style={cardStyle}
+                  style={{
+                    ...cardStyle,
+                    animationDelay: `${index * 0.05}s`,
+                  }}
                   onMouseEnter={cardHoverIn}
                   onMouseLeave={cardHoverOut}
-                  className="border rounded-xl px-5 py-4 flex items-center justify-between"
+                  className="animate-fade-in-up border rounded-xl px-5 py-5 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0 ${getIconColor(job.company)}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0 ${getIconColor(job.company)}`}>
                       {initials(job.company)}
                     </div>
                     <div>
