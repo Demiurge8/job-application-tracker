@@ -64,3 +64,7 @@ html, body {
 .animate-slide-in {
   animation: slideInRight 0.25s ease forwards;
 }
+
+button, a {
+  cursor: pointer;
+}
